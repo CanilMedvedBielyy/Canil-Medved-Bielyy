@@ -1081,16 +1081,28 @@ function wizSubmit(){
   formData.append('email', wizAnswers.email || '');
   formData.append('cidade', wizAnswers.cidade || '');
   formData.append('resumo_completo', resumoCompleto);
+
+  let statusDiagnostico = 'enviando...';
   fetch('/', {
     method: 'POST',
     headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
     body: formData.toString()
-  }).catch(err => console.error('Erro ao salvar questionário internamente:', err));
+  }).then(res => {
+    statusDiagnostico = `status ${res.status} (${res.ok ? 'OK' : 'FALHOU'})`;
+    const diagEl = document.getElementById('diagInterno');
+    if(diagEl) diagEl.textContent = 'Salvo internamente: ' + statusDiagnostico;
+  }).catch(err => {
+    statusDiagnostico = 'erro de rede: ' + err.message;
+    const diagEl = document.getElementById('diagInterno');
+    if(diagEl) diagEl.textContent = 'Salvo internamente: ' + statusDiagnostico;
+    console.error('Erro ao salvar questionário internamente:', err);
+  });
 
   document.getElementById('wizBody').innerHTML = `
     <p class="wiz-section-tag">Tudo pronto</p>
     <h3 class="wiz-question">Questionário concluído.</h3>
     <p class="wiz-help">Suas respostas já foram registradas com nossa equipe. Se quiser, você também pode enviar um resumo direto pelo WhatsApp pra agilizar o contato.</p>
+    <p class="wiz-help" id="diagInterno" style="font-family:var(--mono);font-size:11px;color:var(--silver-dim);">Salvo internamente: enviando...</p>
     <div class="wiz-choices"><button type="button" class="btn btn-primary" id="wizSendWhats">Enviar pelo WhatsApp →</button></div>
   `;
   document.getElementById('wizBack').style.visibility = 'hidden';

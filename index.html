@@ -1065,13 +1065,15 @@ function wizSubmit(){
     if(q.type === 'confirm') val = val ? 'Confirmado' : 'Não confirmado';
     bySection[q.section].push(`${q.q} ${val}`);
   });
-  let msg = `Olá! Segue meu questionário de aquisição de filhote no Medved' Bielyy:\n\n`;
   let resumoCompleto = '';
   Object.keys(bySection).forEach(sec=>{
-    const bloco = `${sec}\n` + bySection[sec].join('\n') + '\n\n';
-    msg += `*${sec}*\n` + bySection[sec].join('\n') + '\n\n';
-    resumoCompleto += bloco;
+    resumoCompleto += `${sec}\n` + bySection[sec].join('\n') + '\n\n';
   });
+
+  /* Mensagem do WhatsApp: só os dados pessoais, pra facilitar salvar o contato */
+  const dadosPessoais = bySection['1 · Dados pessoais'] || [];
+  let msg = `Olá! Acabei de preencher o formulário, segue meus dados pessoais:\n\n`;
+  msg += dadosPessoais.join('\n');
 
   /* Salva internamente via Netlify Forms, sem depender do cliente clicar em nada */
   const formData = new URLSearchParams();
@@ -1082,27 +1084,16 @@ function wizSubmit(){
   formData.append('cidade', wizAnswers.cidade || '');
   formData.append('resumo_completo', resumoCompleto);
 
-  let statusDiagnostico = 'enviando...';
   fetch('/', {
     method: 'POST',
     headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
     body: formData.toString()
-  }).then(res => {
-    statusDiagnostico = `status ${res.status} (${res.ok ? 'OK' : 'FALHOU'})`;
-    const diagEl = document.getElementById('diagInterno');
-    if(diagEl) diagEl.textContent = 'Salvo internamente: ' + statusDiagnostico;
-  }).catch(err => {
-    statusDiagnostico = 'erro de rede: ' + err.message;
-    const diagEl = document.getElementById('diagInterno');
-    if(diagEl) diagEl.textContent = 'Salvo internamente: ' + statusDiagnostico;
-    console.error('Erro ao salvar questionário internamente:', err);
-  });
+  }).catch(err => console.error('Erro ao salvar questionário internamente:', err));
 
   document.getElementById('wizBody').innerHTML = `
     <p class="wiz-section-tag">Tudo pronto</p>
     <h3 class="wiz-question">Questionário concluído.</h3>
-    <p class="wiz-help">Suas respostas já foram registradas com nossa equipe. Se quiser, você também pode enviar um resumo direto pelo WhatsApp pra agilizar o contato.</p>
-    <p class="wiz-help" id="diagInterno" style="font-family:var(--mono);font-size:11px;color:var(--silver-dim);">Salvo internamente: enviando...</p>
+    <p class="wiz-help">Suas respostas completas já foram registradas com nossa equipe. Se quiser, você também pode nos mandar seus dados pessoais pelo WhatsApp pra agilizar o contato.</p>
     <div class="wiz-choices"><button type="button" class="btn btn-primary" id="wizSendWhats">Enviar pelo WhatsApp →</button></div>
   `;
   document.getElementById('wizBack').style.visibility = 'hidden';

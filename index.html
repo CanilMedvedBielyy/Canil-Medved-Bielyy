@@ -679,7 +679,11 @@ const WHATSAPP_NUMBER = "5511966061102";
 const INFINITEPAY_HANDLE = "luiza-reis-d1u";
 const SITE_URL = "https://seusite.com.br";
 
-/* ======= INFINITEPAY - cria o link de pagamento e abre no modal ======= */
+/* ======= INFINITEPAY - cria o link de pagamento e abre no modal =======
+   Importante: a chamada NÃO vai mais direto pro navegador -> InfinitePay,
+   porque a API deles bloqueia isso por segurança (erro de CORS).
+   Agora o site chama uma "function" hospedada no mesmo domínio, que
+   por sua vez conversa com a InfinitePay pelo servidor (sem bloqueio). */
 async function pagarComInfinitePay(items, orderNsu, customerName){
   const payload = {
     handle: INFINITEPAY_HANDLE,
@@ -695,18 +699,20 @@ async function pagarComInfinitePay(items, orderNsu, customerName){
 
   try{
     openPaymentModal(null, true); // mostra "carregando"
-    const res = await fetch('https://api.checkout.infinitepay.io/links', {
+    const res = await fetch('/.netlify/functions/create-payment', {
       method:'POST',
       headers:{'Content-Type':'application/json'},
       body: JSON.stringify(payload)
     });
-    if(!res.ok) throw new Error('Falha ao criar link de pagamento');
     const data = await res.json();
+    if(!res.ok || !data.url){
+      throw new Error(JSON.stringify(data));
+    }
     openPaymentModal(data.url, false);
   } catch(err){
     console.error(err);
     closePaymentModal();
-    alert('Não foi possível abrir o pagamento agora. Verifique sua conexão ou tente novamente em instantes. Se o problema continuar, o handle da InfinitePay configurado no site pode estar incorreto.');
+    alert('DETALHE DO ERRO (temporário, para diagnóstico):\n\n' + err.message);
   }
 }
 

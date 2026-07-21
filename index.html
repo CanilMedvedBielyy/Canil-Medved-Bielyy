@@ -651,7 +651,7 @@
     <span>Pagamento seguro · InfinitePay</span>
     <button id="payClose" aria-label="Fechar pagamento">✕</button>
   </div>
-  <div class="pay-loading" id="payLoading"><div class="spinner"></div><span>Preparando seu pagamento…</span></div>
+  <div class="pay-loading" id="payLoading"><div class="spinner"></div><span>Preparando seu pagamento, uma nova aba vai abrir…</span></div>
   <iframe id="payFrame" title="Checkout InfinitePay"></iframe>
   <a id="payFallback" class="pay-fallback" target="_blank" rel="noopener">O checkout não carregou? Abrir em nova aba →</a>
 </div>
@@ -679,12 +679,15 @@ const WHATSAPP_NUMBER = "5511966061102";
 const INFINITEPAY_HANDLE = "luiza-reis-d1u";
 const SITE_URL = "https://seusite.com.br";
 
-/* ======= INFINITEPAY - cria o link de pagamento e abre no modal =======
+/* ======= INFINITEPAY - cria o link de pagamento e abre em nova aba =======
    Importante: a chamada NÃO vai mais direto pro navegador -> InfinitePay,
    porque a API deles bloqueia isso por segurança (erro de CORS).
-   Agora o site chama uma "function" hospedada no mesmo domínio, que
-   por sua vez conversa com a InfinitePay pelo servidor (sem bloqueio). */
-async function pagarComInfinitePay(items, orderNsu, customerName){
+   O site chama uma "function" hospedada no mesmo domínio, que por sua vez
+   conversa com a InfinitePay pelo servidor (sem bloqueio).
+   Sem nenhuma janela no meio do caminho: o botão clicado mostra um texto
+   de carregando por um instante, e a nova aba com o checkout já abre
+   sozinha assim que o link fica pronto. */
+async function pagarComInfinitePay(items, orderNsu, customerName, triggerBtn){
   const payload = {
     handle: INFINITEPAY_HANDLE,
     order_nsu: orderNsu,
@@ -697,8 +700,10 @@ async function pagarComInfinitePay(items, orderNsu, customerName){
   };
   if(customerName){ payload.customer = { name: customerName }; }
 
+  const originalText = triggerBtn ? triggerBtn.textContent : null;
+  if(triggerBtn){ triggerBtn.disabled = true; triggerBtn.textContent = 'Preparando pagamento…'; }
+
   try{
-    openPaymentModal(null, true); // mostra "carregando"
     const res = await fetch('/.netlify/functions/create-payment', {
       method:'POST',
       headers:{'Content-Type':'application/json'},
@@ -708,40 +713,14 @@ async function pagarComInfinitePay(items, orderNsu, customerName){
     if(!res.ok || !data.url){
       throw new Error(JSON.stringify(data));
     }
-    openPaymentModal(data.url, false);
+    window.open(data.url, '_blank');
   } catch(err){
     console.error(err);
-    closePaymentModal();
-    alert('DETALHE DO ERRO (temporário, para diagnóstico):\n\n' + err.message);
+    alert('Não foi possível abrir o pagamento agora. Verifique sua conexão ou tente novamente em instantes.');
+  } finally {
+    if(triggerBtn){ triggerBtn.disabled = false; triggerBtn.textContent = originalText; }
   }
 }
-
-function openPaymentModal(url, loading){
-  const modal = document.getElementById('payModal');
-  const frame = document.getElementById('payFrame');
-  const fallback = document.getElementById('payFallback');
-  const loadingEl = document.getElementById('payLoading');
-  modal.classList.add('open');
-  if(loading){
-    loadingEl.style.display='flex';
-    frame.style.display='none';
-    fallback.style.display='none';
-    return;
-  }
-  loadingEl.style.display='none';
-  frame.style.display='block';
-  frame.src = url;
-  fallback.href = url;
-  fallback.style.display='inline-flex';
-}
-function closePaymentModal(){
-  const modal = document.getElementById('payModal');
-  const frame = document.getElementById('payFrame');
-  modal.classList.remove('open');
-  frame.src = 'about:blank';
-}
-document.getElementById('payClose').addEventListener('click', closePaymentModal);
-document.getElementById('payOverlay').addEventListener('click', closePaymentModal);
 
 /* ======= PRODUCTS ======= */
 const PRODUCTS = [
@@ -830,7 +809,7 @@ document.getElementById('cartToggle').addEventListener('click', openCart);
 document.getElementById('cartClose').addEventListener('click', closeCart);
 document.getElementById('overlay').addEventListener('click', closeCart);
 
-document.getElementById('checkoutBtn').addEventListener('click', ()=>{
+document.getElementById('checkoutBtn').addEventListener('click', (e)=>{
   const ids = Object.keys(cart).filter(id=>cart[id]>0);
   if(ids.length===0){ alert('Sua sacola está vazia.'); return; }
   const items = ids.map(id=>{
@@ -838,7 +817,7 @@ document.getElementById('checkoutBtn').addEventListener('click', ()=>{
     return { quantity: cart[id], price: p.price, description: p.name };
   });
   const orderNsu = 'loja-' + Date.now();
-  pagarComInfinitePay(items, orderNsu);
+  pagarComInfinitePay(items, orderNsu, null, e.currentTarget);
 });
 
 document.getElementById('cartWhatsLink').addEventListener('click', (e)=>{
@@ -855,12 +834,12 @@ document.getElementById('cartWhatsLink').addEventListener('click', (e)=>{
   window.open(`https://wa.me/${WHATSAPP_NUMBER}?text=${encodeURIComponent(msg)}`, '_blank');
 });
 
-document.getElementById('depositBtn').addEventListener('click', ()=>{
+document.getElementById('depositBtn').addEventListener('click', (e)=>{
   const puppy = document.getElementById('depositPuppy').value;
   const name = document.getElementById('depositName').value;
   if(!name){ alert('Preencha seu nome completo pra identificarmos a reserva.'); return; }
   const orderNsu = 'sinal-' + Date.now();
-  pagarComInfinitePay([{quantity:1, price:3000.00, description:`Sinal de reserva: ${puppy}`}], orderNsu, name);
+  pagarComInfinitePay([{quantity:1, price:3000.00, description:`Sinal de reserva: ${puppy}`}], orderNsu, name, e.currentTarget);
 });
 
 /* shop tabs */

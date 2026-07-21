@@ -418,6 +418,20 @@
 </head>
 <body>
 
+<!-- Formulário oculto: existe só para a Netlify reconhecer os campos do
+     questionário na hora da publicação. O envio de verdade acontece via
+     JavaScript, na função wizSubmit(), lá no final do questionário. -->
+<form name="questionario" method="POST" data-netlify="true" netlify-honeypot="bot-field" style="position:absolute;left:-9999px;top:-9999px;">
+  <input type="hidden" name="form-name" value="questionario" />
+  <p><label>Bot field <input type="text" name="bot-field" /></label></p>
+  <p><label>Nome <input type="text" name="nome" /></label></p>
+  <p><label>Telefone <input type="text" name="telefone" /></label></p>
+  <p><label>Email <input type="text" name="email" /></label></p>
+  <p><label>Cidade <input type="text" name="cidade" /></label></p>
+  <p><label>Resumo completo <textarea name="resumo_completo"></textarea></label></p>
+</form>
+
+
 <header>
   <nav>
     <a href="#" class="brand">
@@ -1052,13 +1066,31 @@ function wizSubmit(){
     bySection[q.section].push(`${q.q} ${val}`);
   });
   let msg = `Olá! Segue meu questionário de aquisição de filhote no Medved' Bielyy:\n\n`;
+  let resumoCompleto = '';
   Object.keys(bySection).forEach(sec=>{
+    const bloco = `${sec}\n` + bySection[sec].join('\n') + '\n\n';
     msg += `*${sec}*\n` + bySection[sec].join('\n') + '\n\n';
+    resumoCompleto += bloco;
   });
+
+  /* Salva internamente via Netlify Forms, sem depender do cliente clicar em nada */
+  const formData = new URLSearchParams();
+  formData.append('form-name', 'questionario');
+  formData.append('nome', wizAnswers.nome || '');
+  formData.append('telefone', wizAnswers.telefone || '');
+  formData.append('email', wizAnswers.email || '');
+  formData.append('cidade', wizAnswers.cidade || '');
+  formData.append('resumo_completo', resumoCompleto);
+  fetch('/', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+    body: formData.toString()
+  }).catch(err => console.error('Erro ao salvar questionário internamente:', err));
+
   document.getElementById('wizBody').innerHTML = `
     <p class="wiz-section-tag">Tudo pronto</p>
     <h3 class="wiz-question">Questionário concluído.</h3>
-    <p class="wiz-help">Clique abaixo para enviar suas respostas pelo WhatsApp. Nossa equipe vai analisar e retornar sobre a aprovação.</p>
+    <p class="wiz-help">Suas respostas já foram registradas com nossa equipe. Se quiser, você também pode enviar um resumo direto pelo WhatsApp pra agilizar o contato.</p>
     <div class="wiz-choices"><button type="button" class="btn btn-primary" id="wizSendWhats">Enviar pelo WhatsApp →</button></div>
   `;
   document.getElementById('wizBack').style.visibility = 'hidden';

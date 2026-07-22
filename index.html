@@ -1109,8 +1109,11 @@ document.getElementById('shipCalcBtn').addEventListener('click', async (e)=>{
     });
     const data = await res.json();
     if(!res.ok) throw new Error(JSON.stringify(data));
+    const debugHtml = data.localDebug
+      ? `<p class="ship-msg" style="font-family:var(--mono);font-size:10.5px;word-break:break-all;">DEBUG ENTREGA LOCAL: ${JSON.stringify(data.localDebug)}</p>`
+      : '';
     if(!data.options || data.options.length === 0){
-      resultsEl.innerHTML = `<p class="ship-msg">Nenhuma opção de frete encontrada pra esse CEP. Confira se o WhatsApp pode te ajudar com a entrega.</p>`;
+      resultsEl.innerHTML = `<p class="ship-msg">Nenhuma opção de frete encontrada pra esse CEP. Confira se o WhatsApp pode te ajudar com a entrega.</p>` + debugHtml;
       return;
     }
     const cheapest = [...data.options].sort((a,b)=>Number(a.price)-Number(b.price)).slice(0,3);
@@ -1122,7 +1125,7 @@ document.getElementById('shipCalcBtn').addEventListener('click', async (e)=>{
         </div>
         <div class="ship-price">${fmt(Number(o.price))}</div>
       </div>
-    `).join('');
+    `).join('') + debugHtml;
     resultsEl.querySelectorAll('.ship-option').forEach(el=>{
       el.addEventListener('click', ()=>{
         resultsEl.querySelectorAll('.ship-option').forEach(x=>x.classList.remove('selected'));

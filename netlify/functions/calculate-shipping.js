@@ -3,6 +3,57 @@
 // direto nas configurações do projeto na Netlify — nunca aparece no
 // código do site nem no GitHub.
 
+/* Coordenadas aproximadas do Ipiranga, São Paulo (origem dos envios) */
+const ORIGIN_LAT = -23.5893;
+const ORIGIN_LNG = -46.6095;
+const LOCAL_DELIVERY_RADIUS_KM = 7;
+const LOCAL_DELIVERY_PRICE = 20;
+const LOCAL_DELIVERY_DAYS = 3;
+
+function distanceKm(lat1, lon1, lat2, lon2){
+  const R = 6371;
+  const dLat = (lat2-lat1) * Math.PI/180;
+  const dLon = (lon2-lon1) * Math.PI/180;
+  const a = Math.sin(dLat/2)**2 + Math.cos(lat1*Math.PI/180)*Math.cos(lat2*Math.PI/180)*Math.sin(dLon/2)**2;
+  return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+}
+
+/* Tenta descobrir se o CEP de destino está dentro do raio de entrega
+   local. Usa dois serviços públicos e gratuitos (ViaCEP + Nominatim/
+   OpenStreetMap). Se qualquer etapa falhar, simplesmente não oferece
+   a entrega local — não quebra o restante do cálculo de frete. */
+async function checkLocalDelivery(cep){
+  try{
+    const viacepRes = await fetch(`https://viacep.com.br/ws/${cep}/json/`);
+    const viacep = await viacepRes.json();
+    if(viacep.erro) return null;
+
+    const query = `${viacep.logradouro}, ${viacep.bairro}, ${viacep.localidade}, ${viacep.uf}, Brasil`;
+    const geoRes = await fetch(`https://nominatim.openstreetmap.org/search?format=json&limit=1&q=${encodeURIComponent(query)}`, {
+      headers: { 'User-Agent': 'Medved Bielyy (medvedbielyy@outlook.com)' }
+    });
+    const geoData = await geoRes.json();
+    if(!geoData || !geoData[0]) return null;
+
+    const lat = parseFloat(geoData[0].lat);
+    const lng = parseFloat(geoData[0].lon);
+    const dist = distanceKm(ORIGIN_LAT, ORIGIN_LNG, lat, lng);
+
+    if(dist <= LOCAL_DELIVERY_RADIUS_KM){
+      return {
+        name: 'Entrega local (motoboy)',
+        company: null,
+        price: LOCAL_DELIVERY_PRICE,
+        delivery_time: LOCAL_DELIVERY_DAYS,
+        local: true
+      };
+    }
+    return null;
+  } catch(err){
+    return null;
+  }
+}
+
 exports.handler = async function (event) {
   if (event.httpMethod !== 'POST') {
     return {
@@ -28,22 +79,25 @@ exports.handler = async function (event) {
       products: payload.products
     };
 
-    const response = await fetch('https://www.melhorenvio.com.br/api/v2/me/shipment/calculate', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Accept': 'application/json',
-        'Authorization': `Bearer ${TOKEN}`,
-        'User-Agent': 'Medved Bielyy (medvedbielyy@outlook.com)'
-      },
-      body: JSON.stringify(body)
-    });
+    const [meResponse, localOption] = await Promise.all([
+      fetch('https://www.melhorenvio.com.br/api/v2/me/shipment/calculate', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': 'application/json',
+          'Authorization': `Bearer ${TOKEN}`,
+          'User-Agent': 'Medved Bielyy (medvedbielyy@outlook.com)'
+        },
+        body: JSON.stringify(body)
+      }),
+      checkLocalDelivery(payload.to_postal_code)
+    ]);
 
-    const data = await response.json();
+    const data = await meResponse.json();
 
-    if (!response.ok) {
+    if (!meResponse.ok) {
       return {
-        statusCode: response.status,
+        statusCode: meResponse.status,
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ error: 'Melhor Envio recusou o pedido', details: data })
       };
@@ -51,7 +105,11 @@ exports.handler = async function (event) {
 
     // A API retorna uma lista com todas as transportadoras/serviços.
     // Filtramos só as opções que realmente deram cotação (sem erro).
-    const options = Array.isArray(data) ? data.filter(o => !o.error && o.price) : [];
+    let options = Array.isArray(data) ? data.filter(o => !o.error && o.price) : [];
+
+    if(localOption){
+      options = [localOption, ...options];
+    }
 
     return {
       statusCode: 200,

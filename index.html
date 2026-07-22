@@ -171,6 +171,8 @@
   .btn-primary:hover{background:var(--maroon-bright);color:var(--snow);}
   .btn-ghost{border:1px solid var(--silver-dim);color:var(--snow);}
   .btn-ghost:hover{border-color:var(--snow);background:rgba(255,255,255,.06);}
+  .btn-ghost-dark{border:1px solid var(--near-black);color:var(--near-black);background:transparent;}
+  .btn-ghost-dark:hover{background:var(--near-black);color:var(--snow);}
   .hero-badges{
     display:flex;gap:28px;margin-top:48px;padding-top:28px;border-top:1px solid var(--line);
     max-width:520px;flex-wrap:wrap;
@@ -272,6 +274,22 @@
   .cart-empty{padding:40px 0;text-align:center;color:var(--silver-dim);font-size:14px;}
   .cart-foot{padding:22px 26px 28px;border-top:1px solid #e3e1d8;}
   .cart-total{display:flex;justify-content:space-between;font-family:var(--mono);font-size:17px;margin-bottom:16px;}
+  .ship-calc{margin-bottom:20px;padding-bottom:18px;border-bottom:1px solid #e3e1d8;}
+  .ship-label{font-family:var(--mono);font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--silver-dim);display:block;margin-bottom:8px;}
+  .ship-input-row{display:flex;gap:8px;}
+  .ship-input-row input{flex:1;padding:10px 12px;border:1px solid #d8d5c9;border-radius:3px;font-size:14px;font-family:var(--body);}
+  .ship-input-row button{white-space:nowrap;padding:10px 16px;font-size:13px;}
+  .ship-option{
+    display:flex;justify-content:space-between;align-items:center;gap:10px;
+    padding:12px 14px;border:1px solid #e3e1d8;border-radius:4px;margin-top:8px;cursor:pointer;
+    transition:border-color .15s, background .15s;font-size:13px;
+  }
+  .ship-option:hover{border-color:var(--near-black);}
+  .ship-option.selected{border-color:var(--maroon-bright);background:#fdf3f0;}
+  .ship-option .ship-name{font-weight:600;}
+  .ship-option .ship-time{color:var(--silver-dim);font-size:12px;}
+  .ship-option .ship-price{font-family:var(--mono);font-weight:600;white-space:nowrap;}
+  .ship-msg{font-size:12.5px;color:var(--silver-dim);margin-top:8px;}
   .cart-note{font-size:12px;color:var(--silver-dim);margin-top:14px;line-height:1.5;}
   .overlay{position:fixed;inset:0;background:rgba(9,11,26,.5);z-index:105;opacity:0;pointer-events:none;transition:opacity .3s;}
   .overlay.open{opacity:1;pointer-events:auto;}
@@ -677,7 +695,17 @@
   <div class="cart-head"><h3>Sua sacola</h3><button class="cart-close" id="cartClose">✕</button></div>
   <div class="cart-items" id="cartItems"></div>
   <div class="cart-foot">
-    <div class="cart-total"><span>Total</span><span id="cartTotal">R$ 0,00</span></div>
+    <div class="ship-calc">
+      <label for="shipCep" class="ship-label">Calcular frete</label>
+      <div class="ship-input-row">
+        <input type="text" id="shipCep" placeholder="00000-000" maxlength="9">
+        <button type="button" class="btn btn-ghost-dark" id="shipCalcBtn">Calcular</button>
+      </div>
+      <div id="shipResults"></div>
+    </div>
+    <div class="cart-total"><span>Subtotal</span><span id="cartTotal">R$ 0,00</span></div>
+    <div class="cart-total" id="shipTotalRow" style="display:none;"><span>Frete</span><span id="shipTotalValue">R$ 0,00</span></div>
+    <div class="cart-total" id="grandTotalRow" style="display:none;font-weight:700;"><span>Total</span><span id="grandTotalValue">R$ 0,00</span></div>
     <button class="btn btn-primary" style="width:100%;justify-content:center;" id="checkoutBtn">Pagar agora →</button>
     <p class="cart-note">Pagamento processado com segurança pela InfinitePay (Pix ou cartão em até 12x). Dúvidas sobre o pedido? <a href="#" id="cartWhatsLink" style="text-decoration:underline;">Fale pelo WhatsApp</a>.</p>
   </div>
@@ -738,16 +766,22 @@ async function pagarComInfinitePay(items, orderNsu, customerName, triggerBtn){
 
 /* ======= PRODUCTS ======= */
 const PRODUCTS = [
-  {id:1, cat:"coleiras", name:"Coleira Névoa Ártica", desc:"Nylon reforçado com fivela em metal escovado.", price:129.90, icon:"🦴"},
-  {id:2, cat:"coleiras", name:"Guia Trenó Curta", desc:"1,20m, ideal para passeios em cidade.", price:99.90, icon:"🪢"},
-  {id:3, cat:"coleiras", name:"Peitoral Neve", desc:"Distribuição de força no peito, sem sufocar.", price:169.90, icon:"🎗️"},
-  {id:4, cat:"racoes", name:"Ração Premium Adulto 15kg", desc:"Fórmula para porte médio-grande, pelagem dupla.", price:289.90, icon:"🥣"},
-  {id:5, cat:"racoes", name:"Ração Filhote 3kg", desc:"Indicada para os primeiros meses do Samoieda.", price:99.90, icon:"🍖"},
-  {id:6, cat:"racoes", name:"Petiscos Naturais 200g", desc:"Sem corantes, ideal para adestramento.", price:39.90, icon:"🦴"},
-  {id:7, cat:"acessorios", name:"Escova Desembaraçadora", desc:"Essencial pra pelagem dupla do Samoieda.", price:79.90, icon:"🪮"},
-  {id:8, cat:"acessorios", name:"Cama Iglu Inverno", desc:"Acolchoada, tamanho M/G.", price:249.90, icon:"🛏️"},
-  {id:9, cat:"acessorios", name:"Comedouro Elevado Duplo", desc:"Aço inox, ajuda na postura ao comer.", price:139.90, icon:"🍽️"},
+  {id:1, cat:"coleiras", name:"Coleira Névoa Ártica", desc:"Nylon reforçado com fivela em metal escovado.", price:129.90, icon:"🦴", weight:0.2, width:16, height:4, length:20},
+  {id:2, cat:"coleiras", name:"Guia Trenó Curta", desc:"1,20m, ideal para passeios em cidade.", price:99.90, icon:"🪢", weight:0.3, width:16, height:4, length:20},
+  {id:3, cat:"coleiras", name:"Peitoral Neve", desc:"Distribuição de força no peito, sem sufocar.", price:169.90, icon:"🎗️", weight:0.3, width:18, height:5, length:22},
+  {id:4, cat:"racoes", name:"Ração Premium Adulto 15kg", desc:"Fórmula para porte médio-grande, pelagem dupla.", price:289.90, icon:"🥣", weight:15.5, width:40, height:15, length:60},
+  {id:5, cat:"racoes", name:"Ração Filhote 3kg", desc:"Indicada para os primeiros meses do Samoieda.", price:99.90, icon:"🍖", weight:3.2, width:25, height:10, length:35},
+  {id:6, cat:"racoes", name:"Petiscos Naturais 200g", desc:"Sem corantes, ideal para adestramento.", price:39.90, icon:"🦴", weight:0.25, width:16, height:4, length:20},
+  {id:7, cat:"acessorios", name:"Escova Desembaraçadora", desc:"Essencial pra pelagem dupla do Samoieda.", price:79.90, icon:"🪮", weight:0.3, width:16, height:4, length:20},
+  {id:8, cat:"acessorios", name:"Cama Iglu Inverno", desc:"Acolchoada, tamanho M/G.", price:249.90, icon:"🛏️", weight:2.2, width:50, height:20, length:50},
+  {id:9, cat:"acessorios", name:"Comedouro Elevado Duplo", desc:"Aço inox, ajuda na postura ao comer.", price:139.90, icon:"🍽️", weight:1.6, width:30, height:15, length:25},
 ];
+
+/* CEP de origem dos envios (configurado por você) */
+const ORIGIN_CEP = "04210061";
+let selectedShipping = null; // { name, price, delivery_time }
+
+
 
 let cart = {}; // {id: qty}
 
@@ -814,6 +848,11 @@ function renderCart(){
       renderCart();
     });
   });
+  /* o frete depende do que está na sacola, então some se o carrinho mudar */
+  selectedShipping = null;
+  document.getElementById('shipResults').innerHTML = '';
+  document.getElementById('shipTotalRow').style.display = 'none';
+  document.getElementById('grandTotalRow').style.display = 'none';
 }
 
 function openCart(){ document.getElementById('cartDrawer').classList.add('open'); document.getElementById('overlay').classList.add('open'); }
@@ -823,13 +862,108 @@ document.getElementById('cartToggle').addEventListener('click', openCart);
 document.getElementById('cartClose').addEventListener('click', closeCart);
 document.getElementById('overlay').addEventListener('click', closeCart);
 
-document.getElementById('checkoutBtn').addEventListener('click', (e)=>{
+function getCartItems(){
   const ids = Object.keys(cart).filter(id=>cart[id]>0);
-  if(ids.length===0){ alert('Sua sacola está vazia.'); return; }
-  const items = ids.map(id=>{
+  return ids.map(id=>{
     const p = PRODUCTS.find(x=>x.id===Number(id));
     return { quantity: cart[id], price: p.price, description: p.name };
   });
+}
+
+/* ======= FRETE (Melhor Envio) =======
+   O token do Melhor Envio é secreto, por isso a chamada de verdade
+   acontece na function calculate-shipping.js, que roda no servidor. */
+function updateShippingTotals(){
+  const ids = Object.keys(cart).filter(id=>cart[id]>0);
+  const subtotal = ids.reduce((s,id)=>{
+    const p = PRODUCTS.find(x=>x.id===Number(id));
+    return s + p.price*cart[id];
+  }, 0);
+  const shipRow = document.getElementById('shipTotalRow');
+  const grandRow = document.getElementById('grandTotalRow');
+  if(selectedShipping){
+    document.getElementById('shipTotalValue').textContent = fmt(selectedShipping.price);
+    document.getElementById('grandTotalValue').textContent = fmt(subtotal + selectedShipping.price);
+    shipRow.style.display = 'flex';
+    grandRow.style.display = 'flex';
+  } else {
+    shipRow.style.display = 'none';
+    grandRow.style.display = 'none';
+  }
+}
+
+document.getElementById('shipCalcBtn').addEventListener('click', async (e)=>{
+  const btn = e.currentTarget;
+  const cepRaw = document.getElementById('shipCep').value.replace(/\D/g,'');
+  const resultsEl = document.getElementById('shipResults');
+  const items = getCartItems();
+
+  if(items.length === 0){ alert('Sua sacola está vazia.'); return; }
+  if(cepRaw.length !== 8){ alert('Digite um CEP válido, com 8 números.'); return; }
+
+  const products = Object.keys(cart).filter(id=>cart[id]>0).map(id=>{
+    const p = PRODUCTS.find(x=>x.id===Number(id));
+    return {
+      id: String(p.id),
+      width: p.width, height: p.height, length: p.length,
+      weight: p.weight,
+      insurance_value: p.price,
+      quantity: cart[id]
+    };
+  });
+
+  const originalText = btn.textContent;
+  btn.disabled = true; btn.textContent = 'Calculando…';
+  resultsEl.innerHTML = '';
+  selectedShipping = null;
+  updateShippingTotals();
+
+  try{
+    const res = await fetch('/.netlify/functions/calculate-shipping', {
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({ from_postal_code: ORIGIN_CEP, to_postal_code: cepRaw, products })
+    });
+    const data = await res.json();
+    if(!res.ok) throw new Error(JSON.stringify(data));
+    if(!data.options || data.options.length === 0){
+      resultsEl.innerHTML = `<p class="ship-msg">Nenhuma opção de frete encontrada pra esse CEP. Confira se o WhatsApp pode te ajudar com a entrega.</p>`;
+      return;
+    }
+    resultsEl.innerHTML = data.options.map((o, i)=>`
+      <div class="ship-option" data-index="${i}">
+        <div>
+          <div class="ship-name">${o.company?.name || ''} · ${o.name}</div>
+          <div class="ship-time">${o.delivery_time ? o.delivery_time + ' dias úteis' : ''}</div>
+        </div>
+        <div class="ship-price">${fmt(Number(o.price))}</div>
+      </div>
+    `).join('');
+    resultsEl.querySelectorAll('.ship-option').forEach(el=>{
+      el.addEventListener('click', ()=>{
+        resultsEl.querySelectorAll('.ship-option').forEach(x=>x.classList.remove('selected'));
+        el.classList.add('selected');
+        const o = data.options[Number(el.dataset.index)];
+        selectedShipping = {
+          name: `${o.company?.name || ''} ${o.name}`,
+          price: Number(o.price)
+        };
+        updateShippingTotals();
+      });
+    });
+  } catch(err){
+    console.error(err);
+    resultsEl.innerHTML = `<p class="ship-msg">Não foi possível calcular o frete agora. Tente novamente em instantes.</p>`;
+  } finally {
+    btn.disabled = false; btn.textContent = originalText;
+  }
+});
+
+document.getElementById('checkoutBtn').addEventListener('click', (e)=>{
+  const items = getCartItems();
+  if(items.length===0){ alert('Sua sacola está vazia.'); return; }
+  if(!selectedShipping){ alert('Calcule o frete e escolha uma opção de entrega antes de pagar.'); return; }
+  items.push({ quantity: 1, price: selectedShipping.price, description: `Frete: ${selectedShipping.name}` });
   const orderNsu = 'loja-' + Date.now();
   pagarComInfinitePay(items, orderNsu, null, e.currentTarget);
 });
@@ -1065,15 +1199,13 @@ function wizSubmit(){
     if(q.type === 'confirm') val = val ? 'Confirmado' : 'Não confirmado';
     bySection[q.section].push(`${q.q} ${val}`);
   });
+  let msg = `Olá! Segue meu questionário de aquisição de filhote no Medved' Bielyy:\n\n`;
   let resumoCompleto = '';
   Object.keys(bySection).forEach(sec=>{
-    resumoCompleto += `${sec}\n` + bySection[sec].join('\n') + '\n\n';
+    const bloco = `${sec}\n` + bySection[sec].join('\n') + '\n\n';
+    msg += `*${sec}*\n` + bySection[sec].join('\n') + '\n\n';
+    resumoCompleto += bloco;
   });
-
-  /* Mensagem do WhatsApp: só os dados pessoais, pra facilitar salvar o contato */
-  const dadosPessoais = bySection['1 · Dados pessoais'] || [];
-  let msg = `Olá! Acabei de preencher o formulário, segue meus dados pessoais:\n\n`;
-  msg += dadosPessoais.join('\n');
 
   /* Salva internamente via Netlify Forms, sem depender do cliente clicar em nada */
   const formData = new URLSearchParams();
@@ -1093,7 +1225,7 @@ function wizSubmit(){
   document.getElementById('wizBody').innerHTML = `
     <p class="wiz-section-tag">Tudo pronto</p>
     <h3 class="wiz-question">Questionário concluído.</h3>
-    <p class="wiz-help">Suas respostas completas já foram registradas com nossa equipe. Se quiser, você também pode nos mandar seus dados pessoais pelo WhatsApp pra agilizar o contato.</p>
+    <p class="wiz-help">Suas respostas já foram registradas com nossa equipe. Se quiser, você também pode enviar um resumo direto pelo WhatsApp pra agilizar o contato.</p>
     <div class="wiz-choices"><button type="button" class="btn btn-primary" id="wizSendWhats">Enviar pelo WhatsApp →</button></div>
   `;
   document.getElementById('wizBack').style.visibility = 'hidden';

@@ -1117,7 +1117,7 @@ document.getElementById('shipCalcBtn').addEventListener('click', async (e)=>{
     resultsEl.innerHTML = cheapest.map((o, i)=>`
       <div class="ship-option" data-index="${i}">
         <div>
-          <div class="ship-name">${o.company?.name || ''} · ${o.name}</div>
+          <div class="ship-name">${o.company?.name ? o.company.name + ' · ' : ''}${o.name}</div>
           <div class="ship-time">${o.delivery_time ? o.delivery_time + ' dias úteis' : ''}</div>
         </div>
         <div class="ship-price">${fmt(Number(o.price))}</div>
@@ -1129,7 +1129,7 @@ document.getElementById('shipCalcBtn').addEventListener('click', async (e)=>{
         el.classList.add('selected');
         const o = cheapest[Number(el.dataset.index)];
         selectedShipping = {
-          name: `${o.company?.name || ''} ${o.name}`,
+          name: o.company?.name ? `${o.company.name} ${o.name}` : o.name,
           price: Number(o.price)
         };
         updateCartTotals();

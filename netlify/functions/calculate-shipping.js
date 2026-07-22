@@ -21,36 +21,47 @@ function distanceKm(lat1, lon1, lat2, lon2){
 /* Tenta descobrir se o CEP de destino está dentro do raio de entrega
    local. Usa dois serviços públicos e gratuitos (ViaCEP + Nominatim/
    OpenStreetMap). Se qualquer etapa falhar, simplesmente não oferece
-   a entrega local — não quebra o restante do cálculo de frete. */
+   a entrega local — não quebra o restante do cálculo de frete.
+   TEMPORÁRIO: retorna também um objeto "debug" pra diagnosticar. */
 async function checkLocalDelivery(cep){
+  const debug = { cep };
   try{
     const viacepRes = await fetch(`https://viacep.com.br/ws/${cep}/json/`);
     const viacep = await viacepRes.json();
-    if(viacep.erro) return null;
+    debug.viacep = viacep;
+    if(viacep.erro) return { option: null, debug };
 
     const query = `${viacep.logradouro}, ${viacep.bairro}, ${viacep.localidade}, ${viacep.uf}, Brasil`;
+    debug.query = query;
     const geoRes = await fetch(`https://nominatim.openstreetmap.org/search?format=json&limit=1&q=${encodeURIComponent(query)}`, {
       headers: { 'User-Agent': 'Medved Bielyy (medvedbielyy@outlook.com)' }
     });
+    debug.geoStatus = geoRes.status;
     const geoData = await geoRes.json();
-    if(!geoData || !geoData[0]) return null;
+    debug.geoData = geoData;
+    if(!geoData || !geoData[0]) return { option: null, debug };
 
     const lat = parseFloat(geoData[0].lat);
     const lng = parseFloat(geoData[0].lon);
     const dist = distanceKm(ORIGIN_LAT, ORIGIN_LNG, lat, lng);
+    debug.lat = lat; debug.lng = lng; debug.distKm = dist;
 
     if(dist <= LOCAL_DELIVERY_RADIUS_KM){
       return {
-        name: 'Entrega local (motoboy)',
-        company: null,
-        price: LOCAL_DELIVERY_PRICE,
-        delivery_time: LOCAL_DELIVERY_DAYS,
-        local: true
+        option: {
+          name: 'Entrega local (motoboy)',
+          company: null,
+          price: LOCAL_DELIVERY_PRICE,
+          delivery_time: LOCAL_DELIVERY_DAYS,
+          local: true
+        },
+        debug
       };
     }
-    return null;
+    return { option: null, debug };
   } catch(err){
-    return null;
+    debug.error = err.message;
+    return { option: null, debug };
   }
 }
 
@@ -79,7 +90,7 @@ exports.handler = async function (event) {
       products: payload.products
     };
 
-    const [meResponse, localOption] = await Promise.all([
+    const [meResponse, localResult] = await Promise.all([
       fetch('https://www.melhorenvio.com.br/api/v2/me/shipment/calculate', {
         method: 'POST',
         headers: {
@@ -107,14 +118,14 @@ exports.handler = async function (event) {
     // Filtramos só as opções que realmente deram cotação (sem erro).
     let options = Array.isArray(data) ? data.filter(o => !o.error && o.price) : [];
 
-    if(localOption){
-      options = [localOption, ...options];
+    if(localResult && localResult.option){
+      options = [localResult.option, ...options];
     }
 
     return {
       statusCode: 200,
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ options })
+      body: JSON.stringify({ options, localDebug: localResult ? localResult.debug : null })
     };
   } catch (err) {
     return {

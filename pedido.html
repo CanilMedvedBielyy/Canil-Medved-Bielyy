@@ -1,0 +1,241 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Acompanhar pedido — Bielyy Store</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@600;700;800&family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --purple-deep:#6D42B8; --purple:#8B5FD1; --purple-soft:#B79BEA;
+    --lavender:#F3ECFF; --pink:#FF7FAE; --pink-soft:#FFD9E6;
+    --cream:#FFF9FC; --gold:#FFC93C; --ink:#3A2E52; --ink-soft:#7A6E96;
+    --green:#3FAE5C; --red:#E0703B;
+  }
+  *{box-sizing:border-box; margin:0; padding:0;}
+  body{
+    font-family:'Poppins',sans-serif; background:var(--cream); color:var(--ink);
+    min-height:100vh; padding:24px 16px;
+  }
+  h1,h2{font-family:'Baloo 2',cursive; color:var(--purple-deep);}
+  .wrap{max-width:520px; margin:40px auto;}
+  a.back{color:var(--purple-deep); font-size:13.5px; font-weight:600; text-decoration:none; display:inline-block; margin-bottom:20px;}
+
+  #search{background:#fff; border-radius:20px; padding:32px 28px; box-shadow:0 12px 32px rgba(109,66,184,.12); text-align:center;}
+  #search h1{font-size:22px; margin-bottom:6px;}
+  #search p{color:var(--ink-soft); font-size:13.5px; margin-bottom:20px;}
+  #search input{width:100%; padding:12px 14px; border-radius:12px; border:1.5px solid var(--lavender); font-family:'Poppins'; font-size:14.5px; margin-bottom:12px; text-align:center;}
+  #search input:focus{outline:none; border-color:var(--purple);}
+  #search button{width:100%; padding:12px; border-radius:12px; background:linear-gradient(135deg,var(--purple),var(--pink)); color:#fff; font-weight:700; font-size:14.5px;}
+  #searchError{color:var(--red); font-size:12.5px; margin-top:10px; min-height:16px;}
+
+  #result{display:none; background:#fff; border-radius:20px; padding:28px 26px; box-shadow:0 12px 32px rgba(109,66,184,.12);}
+  #result h2{font-size:19px; margin-bottom:4px;}
+  #result .sub{color:var(--ink-soft); font-size:13px; margin-bottom:24px;}
+
+  .timeline{list-style:none; margin-bottom:24px;}
+  .timeline li{display:flex; gap:14px; padding-bottom:26px; position:relative;}
+  .timeline li:last-child{padding-bottom:0;}
+  .timeline li:not(:last-child)::before{
+    content:''; position:absolute; left:13px; top:28px; bottom:0; width:2px; background:var(--lavender);
+  }
+  .timeline li.done:not(:last-child)::before{background:var(--purple-soft);}
+  .dot{
+    width:28px; height:28px; border-radius:50%; flex-shrink:0; display:flex; align-items:center; justify-content:center;
+    background:var(--lavender); color:var(--ink-soft); font-size:13px; font-weight:700; z-index:1;
+  }
+  .timeline li.done .dot{background:var(--purple-deep); color:#fff;}
+  .timeline li.current .dot{background:linear-gradient(135deg,var(--purple),var(--pink)); color:#fff; box-shadow:0 0 0 4px var(--lavender);}
+  .step-label{font-weight:700; font-size:14.5px; color:var(--ink-soft); padding-top:3px;}
+  .timeline li.done .step-label, .timeline li.current .step-label{color:var(--ink);}
+  .step-note{font-size:12px; color:var(--ink-soft); margin-top:2px;}
+
+  .items-box{background:var(--lavender); border-radius:14px; padding:14px 16px; font-size:13px; color:var(--ink);}
+  .items-box div{padding:3px 0;}
+  .tracking{margin-top:16px; font-size:13px; text-align:center;}
+  .tracking a{color:var(--purple-deep); font-weight:700;}
+  #newSearch{display:block; text-align:center; margin-top:20px; color:var(--purple-deep); font-size:13px; font-weight:600; cursor:pointer;}
+
+  .tracking-box{margin-top:18px; border:1.5px dashed var(--purple-soft); border-radius:14px; padding:14px 16px; text-align:center;}
+  .tracking-box .lbl{font-size:12px; color:var(--ink-soft);}
+  .tracking-box .code{font-family:'Baloo 2'; font-size:22px; letter-spacing:1px; color:var(--purple-deep); margin:2px 0 10px; word-break:break-all;}
+  .tracking-box .row{display:flex; gap:8px; justify-content:center; flex-wrap:wrap;}
+  .pill-btn{border:none; cursor:pointer; padding:9px 14px; border-radius:999px; font-family:'Poppins'; font-weight:600; font-size:13px; text-decoration:none; display:inline-block;}
+  .pill-btn.main{background:linear-gradient(135deg,var(--purple),var(--pink)); color:#fff;}
+  .pill-btn.soft{background:var(--lavender); color:var(--purple-deep);}
+  .pill-btn.wa{background:#25D366; color:#fff;}
+  .cancel-box{background:#FFF1EA; color:#9A4A22; border-radius:14px; padding:14px 16px; font-size:13.5px; line-height:1.6; margin-bottom:18px;}
+  .meta{font-size:12px; color:var(--ink-soft); margin-top:14px; text-align:center;}
+  .help{display:flex; gap:8px; justify-content:center; flex-wrap:wrap; margin-top:18px;}
+  #search button{border:none; cursor:pointer;}
+  #searchError{color:var(--red);}
+  .review-cta{display:flex; flex-direction:column; gap:4px; background:#FFF8E1; border:1.5px solid #FBE3A6; border-radius:16px; padding:14px 16px; margin:14px 0; font-size:14px;}
+  .voltei-cta{background:#F3ECFF; border:1.5px dashed #C9B3F0; border-radius:16px; padding:12px 16px; margin:14px 0; font-size:13.5px; line-height:1.5; color:#4E2E8C;}
+  .review-cta span{font-size:12.5px; color:#7a6a45;}
+  .review-cta .pill-btn{align-self:flex-start; margin-top:6px; background:#F5B301; color:#fff; text-decoration:none;}
+</style>
+</head>
+<body>
+  <div class="wrap">
+    <a class="back" href="/">← Voltar pra loja</a>
+
+    <div id="search">
+      <h1>📦 Acompanhar pedido</h1>
+      <p>Digite o número do seu pedido. Ele aparece na mensagem do WhatsApp ou na tela depois do pagamento (ex.: <b>W1760000000000</b>).</p>
+      <input type="text" id="orderInput" placeholder="Número do pedido" autocomplete="off" onkeydown="if(event.key==='Enter') buscar()">
+      <button id="searchBtn" onclick="buscar()">Buscar</button>
+      <div id="searchError"></div>
+      <p style="margin:16px 0 0; font-size:12.5px;">Tem conta na loja? <a href="/?conta=1" style="color:var(--purple-deep); font-weight:700;">Veja todos os seus pedidos</a></p>
+    </div>
+
+    <div id="result"></div>
+  </div>
+
+<script>
+const WHATS = '5511915971151';
+const STEPS = [
+  { key: 'aguardando_pagamento', label: 'Pedido recebido', note: 'Aguardando a confirmação do pagamento', doneNote: 'Recebemos seu pedido' },
+  { key: 'pago', label: 'Pagamento confirmado', note: 'Recebemos seu pagamento 💜' },
+  { key: 'em_preparacao', label: 'Em preparação', note: 'Estamos separando e embalando seu pedido' },
+  { key: 'enviado', label: 'Enviado', note: 'Seu pedido está a caminho 🚚' },
+  { key: 'entregue', label: 'Entregue', note: 'Chegou! Aproveita 🐾' }
+];
+
+function esc(v){ return String(v == null ? '' : v).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+function dt(v){ if(!v) return ''; const d = new Date(v); return isNaN(d) ? '' : d.toLocaleDateString('pt-BR') + ' às ' + d.toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'}); }
+
+function buscar(){
+  const num = document.getElementById('orderInput').value.replace(/[#\s]/g,'').toUpperCase();
+  const errBox = document.getElementById('searchError');
+  const btn = document.getElementById('searchBtn');
+  errBox.textContent = '';
+  if(!num){ errBox.textContent = 'Digite o número do pedido.'; return; }
+  btn.disabled = true; btn.textContent = 'Buscando...';
+
+  fetch('/.netlify/functions/track-order?order=' + encodeURIComponent(num), { cache: 'no-store' })
+    .then(r => {
+      if(r.status === 404){ throw new Error('notfound'); }
+      if(!r.ok){ throw new Error('erro'); }
+      return r.json();
+    })
+    .then(data => {
+      history.replaceState({}, '', location.pathname + '?pedido=' + encodeURIComponent(data.order_nsu));
+      render(data);
+    })
+    .catch(err => {
+      errBox.textContent = err.message === 'notfound'
+        ? 'Não encontramos nenhum pedido com esse número. Confira e tente de novo.'
+        : 'Erro ao buscar. Tente de novo em instantes.';
+    })
+    .finally(() => { btn.disabled = false; btn.textContent = 'Buscar'; });
+}
+
+function copyCode(code, el){
+  const done = () => { el.textContent = 'Copiado ✓'; setTimeout(() => el.textContent = 'Copiar código', 1800); };
+  if(navigator.clipboard){ navigator.clipboard.writeText(code).then(done).catch(() => prompt('Copie o código:', code)); }
+  else { prompt('Copie o código:', code); }
+}
+
+// Onde rastrear, conforme a transportadora escolhida no painel
+const CARRIERS = {
+  correios: { name: 'Correios', url: 'https://rastreamento.correios.com.br/app/index.php', tip: 'No site dos Correios, cole o código no campo de busca.' },
+  loggi:    { name: 'Loggi',    url: 'https://www.loggi.com/rastreador', tip: 'No site da Loggi, cole o código e clique em "Rastrear".' },
+  jadlog:   { name: 'Jadlog',   url: 'https://www.jadlog.com.br/jadlog/tracking', tip: 'No site da Jadlog, cole o código no campo de busca.' },
+  motoboy:  { name: 'Motoboy',  url: '', tip: '' },
+  outra:    { name: 'Transportadora', url: '', tip: 'Use o código no site da transportadora.' }
+};
+function guessCarrier(order){
+  if(order.carrier && CARRIERS[order.carrier]) return order.carrier;
+  if(/motoboy/i.test(order.shipping || '')) return 'motoboy';
+  if(/^[A-Z]{2}\d{9}[A-Z]{2}$/i.test(order.trackingCode || '')) return 'correios';
+  return 'outra';
+}
+function trackingHTML(order, currentIdx){
+  const code = order.trackingCode;
+  const car = guessCarrier(order);
+  const c = CARRIERS[car];
+  if(!code){
+    if(car === 'motoboy' && currentIdx >= 3) return `<div class="tracking-box"><div class="lbl">🛵 Seu pedido está com o motoboy</div><div class="lbl" style="margin-top:4px">Ele chega hoje! Qualquer dúvida, chame a gente no WhatsApp.</div></div>`;
+    return currentIdx >= 3 ? '' : `<p class="meta">${/motoboy/i.test(order.shipping||'') ? 'Você recebe aqui o aviso assim que o motoboy sair com o seu pedido.' : 'O código de rastreio aparece aqui assim que o pedido for enviado.'}</p>`;
+  }
+  // Link de acompanhamento (ex.: corrida do Uber/99/Lalamove)
+  if(/^https?:\/\//i.test(code)){
+    return `<div class="tracking-box">
+      <div class="lbl">${car === 'motoboy' ? '🛵 Seu pedido está a caminho com o motoboy' : 'Acompanhe sua entrega'}</div>
+      <div class="row" style="margin-top:10px"><a class="pill-btn main" href="${esc(code)}" target="_blank" rel="noopener">Acompanhar entrega ao vivo →</a></div>
+    </div>`;
+  }
+  return `<div class="tracking-box">
+      <div class="lbl">Código de rastreio · ${esc(c.name)}</div>
+      <div class="code">${esc(code)}</div>
+      <div class="row">
+        <button class="pill-btn soft" onclick="copyCode(${esc(JSON.stringify(code))}, this)">Copiar código</button>
+        ${c.url ? `<a class="pill-btn main" href="${c.url}" target="_blank" rel="noopener">Rastrear ${car==='correios'?'nos':'na'} ${esc(c.name)} →</a>` : ''}
+      </div>
+      ${c.tip ? `<div class="lbl" style="margin-top:8px">${c.tip}</div>` : ''}
+    </div>`;
+}
+
+function novaBusca(){
+  history.replaceState({}, '', location.pathname);
+  document.getElementById('result').style.display = 'none';
+  document.getElementById('search').style.display = 'block';
+  document.getElementById('orderInput').value = '';
+  document.getElementById('orderInput').focus();
+}
+
+function render(order){
+  document.getElementById('search').style.display = 'none';
+  const box = document.getElementById('result');
+  box.style.display = 'block';
+
+  const hello = `<h2>Oi${order.customerFirstName ? ', ' + esc(order.customerFirstName) : ''}!</h2>
+    <div class="sub">Pedido #${esc(order.order_nsu)}${order.createdAt ? ' · feito em ' + dt(order.createdAt) : ''}</div>`;
+  const items = (order.items || []).length
+    ? `<div class="items-box">${order.items.map(it => `<div>${esc(it.quantity)}x ${esc(it.description)}</div>`).join('')}${order.shipping ? `<div style="margin-top:6px; color:var(--ink-soft)">Entrega: ${esc(order.shipping)}</div>` : ''}</div>`
+    : '';
+  const waMsg = encodeURIComponent(`Oi! Queria falar sobre o meu pedido #${order.order_nsu} da Bielyy Store.`);
+  const help = `<div class="help">
+      <a class="pill-btn wa" href="https://wa.me/${WHATS}?text=${waMsg}" target="_blank" rel="noopener">💬 Falar no WhatsApp</a>
+      <button class="pill-btn soft" onclick="buscar()">🔄 Atualizar</button>
+      <button class="pill-btn soft" onclick="novaBusca()">🔍 Outro pedido</button>
+    </div>`;
+
+  if(order.status === 'cancelado'){
+    box.innerHTML = hello + `<div class="cancel-box">Este pedido foi <b>cancelado</b>. Se tiver alguma dúvida, fale com a gente pelo WhatsApp.</div>` + items + help;
+    return;
+  }
+
+  let currentIdx = STEPS.findIndex(s => s.key === order.status);
+  if(currentIdx < 0) currentIdx = 0;
+
+  const tracking = trackingHTML(order, currentIdx);
+
+  box.innerHTML = hello + `
+    <ul class="timeline">
+      ${STEPS.map((s,i) => `
+        <li class="${i < currentIdx ? 'done' : i === currentIdx ? 'current' : ''}">
+          <span class="dot">${i < currentIdx ? '✓' : i+1}</span>
+          <div>
+            <div class="step-label">${s.label}</div>
+            <div class="step-note">${i < currentIdx ? (s.doneNote || s.note) : i === currentIdx ? s.note : ''}</div>
+          </div>
+        </li>`).join('')}
+    </ul>
+    ${items}
+    ${tracking}
+    ${(order.status === 'enviado' || order.status === 'entregue') ? `<div class="review-cta"><b>⭐ ${order.status === 'entregue' ? 'Chegou! O que seu pet achou?' : 'Já recebeu? Conta o que achou!'}</b><span>Sua avaliação ajuda outros tutores a escolher.</span><a class="pill-btn" href="/?avaliar=${encodeURIComponent(order.order_nsu)}">Avaliar produtos</a></div>` : ''}
+    ${['pago','em_preparacao','enviado','entregue'].includes(order.status) ? `<div class="voltei-cta">🎁 <b>Obrigada pela compra!</b> Tem um cupom de cliente fiel esperando por você: entre em <b>Minha conta</b> no site para ver.</div>` : ''}
+    ${order.statusUpdatedAt ? `<p class="meta">Última atualização: ${dt(order.statusUpdatedAt)}</p>` : ''}
+    ${help}`;
+}
+
+// Se veio com o número na URL (pedido.html?pedido=W123), já busca direto
+(function(){
+  const num = new URLSearchParams(location.search).get('pedido');
+  if(num){ document.getElementById('orderInput').value = num; buscar(); }
+})();
+</script>
+</body>
+</html>
